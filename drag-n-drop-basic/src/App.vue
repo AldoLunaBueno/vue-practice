@@ -1,85 +1,129 @@
-<script setup>
-import { RouterLink, RouterView } from 'vue-router'
-import HelloWorld from './components/HelloWorld.vue'
+<script type="module">
+export default {
+  data() {
+    return {
+      isDragging: false,
+      mouseXPos: 0,
+      mouseYPos: 0,
+      x: null,
+      y: null,
+      currentZone: "zone-a", // Track the current zone
+      tempFixed: false, // Temporary fixed positioning
+      originaParent: null,
+      canDrag: true,
+    };
+  },
+  mounted() {
+    window.addEventListener("mousemove", this.handleMouseMove);
+    window.addEventListener("mouseup", this.handleMouseUp);
+  },
+  beforeUnmount() {
+    window.removeEventListener("mousemove", this.handleMouseMove);
+    window.removeEventListener("mouseup", this.handleMouseUp);
+  },
+  methods: {
+    handleMouseMove(e) {
+      if (this.isDragging) {
+        const diffX = e.clientX - this.mouseXPos;
+        const diffY = e.clientY - this.mouseYPos;
+        this.x += diffX;
+        this.y += diffY;
+      }
+      this.mouseXPos = e.clientX;
+      this.mouseYPos = e.clientY;
+    },
+    handleMouseUp() {
+      if (!this.isDragging) return
+      this.isDragging = false
+      this.tempFixed = false // Restore normal positioning
+
+      // Get drop zones
+      const zoneA = this.$refs.zoneA;
+      const zoneB = this.$refs.zoneB;
+      const img = this.$refs.image;
+      const zoneBRect = zoneB.getBoundingClientRect();
+
+      // Check if image is inside zoneB
+      if (
+        this.mouseXPos >= zoneBRect.left &&
+        this.mouseXPos <= zoneBRect.right &&
+        this.mouseYPos >= zoneBRect.top &&
+        this.mouseYPos <= zoneBRect.bottom
+      ) {
+        this.currentZone = "zone-b"; // Switch to zone B
+        zoneB.append(img)
+        this.x = 0; // Reset position relative to zone B
+        this.y = 0;
+        this.canDrag = false;
+      } else {
+        zoneA.append(img)
+        this.x = 0; // Reset position relative to zone A
+        this.y = 0;
+      }
+    },
+    handleMouseDown(e) {
+      if (!this.canDrag) return; // Prevent dragging if canDrag is false
+      this.isDragging = true;
+      this.tempFixed = true;
+      const img = this.$refs.image;
+      this.originaParent = img.parentElement;
+      const imgRect = img.getBoundingClientRect();
+      document.body.appendChild(img)
+
+      // Set fixed position for smooth dragging
+      img.style.position = "fixed";
+      img.style.zIndex = "1000";
+      this.x = imgRect.left;
+      this.y = imgRect.top;     
+    }
+  },
+};
 </script>
 
 <template>
-  <header>
-    <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
-
-    <div class="wrapper">
-      <HelloWorld msg="You did it!" />
-
-      <nav>
-        <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/about">About</RouterLink>
-      </nav>
-    </div>
-  </header>
-
-  <RouterView />
+  <div class="zone-a" ref="zoneA">
+    <img
+      alt="logo"
+      src="./assets/logo.svg"
+      :style="{
+        left: `${x}px`,
+        top: `${y}px`,
+        cursor: isDragging ? 'grabbing' : 'grab',
+        position: tempFixed ? 'fixed' : 'absolute', // temporary fixed position
+      }"
+      draggable="false"
+      ref="image"
+      @mousedown="handleMouseDown"
+    />
+  </div>
+  <div class="zone-b" ref="zoneB">
+  </div>
 </template>
 
 <style scoped>
-header {
-  line-height: 1.5;
-  max-height: 100vh;
-}
-
-.logo {
-  display: block;
-  margin: 0 auto 2rem;
-}
-
-nav {
-  width: 100%;
-  font-size: 12px;
-  text-align: center;
-  margin-top: 2rem;
-}
-
-nav a.router-link-exact-active {
-  color: var(--color-text);
-}
-
-nav a.router-link-exact-active:hover {
-  background-color: transparent;
-}
-
-nav a {
-  display: inline-block;
-  padding: 0 1rem;
-  border-left: 1px solid var(--color-border);
-}
-
-nav a:first-of-type {
-  border: 0;
-}
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
+div {
+  z-index: 0;
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  background-color: gray;
+  &.zone-a {
+    top: 50px;
+    left: 100px;
   }
-
-  .logo {
-    margin: 0 2rem 0 0;
+  &.zone-b {
+    top: 200px;
+    left: 200px;
   }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  nav {
-    text-align: left;
-    margin-left: -1rem;
-    font-size: 1rem;
-
-    padding: 1rem 0;
-    margin-top: 1rem;
-  }
+}
+img {
+  cursor: grab;
+  position: absolute;
+  height: 100px;
+  width: 100px;
+  z-index: 1;
+}
+.fixed {
+  position: fixed;
 }
 </style>
